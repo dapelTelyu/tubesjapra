@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Place Finder</title>
+  <meta name="description" content="Smart Place Finder – Discover, review, and organize your favorite cafes.">
+  
+  <!-- Plus Jakarta Sans & Outfit Fonts from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Tailwind Config for Custom Fonts and Palette -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Outfit', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Smooth scrollbars */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Auth page gradient */
+    .auth-gradient {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4f46e5 100%);
+    }
+
+    /* Glassmorphism card */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* Input focus animation */
+    .auth-input:focus {
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Fade in animation */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in-up { animation: fadeInUp 0.5s ease forwards; }
+
+    /* Dot pulse loader */
+    @keyframes pulse-dot {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    .dot-pulse span {
+      display: inline-block; width: 8px; height: 8px;
+      border-radius: 50%; background: currentColor; margin: 0 2px;
+    }
+    .dot-pulse span:nth-child(1) { animation: pulse-dot 1.2s infinite ease-in-out; }
+    .dot-pulse span:nth-child(2) { animation: pulse-dot 1.2s infinite ease-in-out 0.2s; }
+    .dot-pulse span:nth-child(3) { animation: pulse-dot 1.2s infinite ease-in-out 0.4s; }
+
+    /* Admin badge chip */
+    .role-admin { background: linear-gradient(90deg, #f59e0b, #d97706); }
+  </style>
+</head>
+<body class="h-full font-sans text-slate-600 antialiased">
+
+  <!-- ==========================================
+       AUTH GATE (Login / Signup)
+       ========================================== -->
+  <div id="auth-gate" class="fixed inset-0 z-[100] auth-gradient flex items-center justify-center p-4">
+
+    <!-- Decorative blobs -->
+    <div class="absolute top-0 left-0 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+    <div class="absolute bottom-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
+
+    <div class="w-full max-w-md fade-in-up relative z-10">
+      <!-- Brand -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-indigo-500 shadow-lg shadow-indigo-500/40 mb-4">
+          <i class="fa-solid fa-map-location-dot text-white text-2xl"></i>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white tracking-tight">Smart Place Finder</h1>
+        <p class="text-indigo-300 text-sm mt-1">Discover, review & organize your favorite spots.</p>
+      </div>
+
+      <!-- Card -->
+      <div class="glass-card rounded-3xl p-8 shadow-2xl">
+        <!-- Tab switcher -->
+        <div class="flex bg-white/10 rounded-xl p-1 mb-6" id="auth-tabs">
+          <button id="tab-login-btn"
+            onclick="showAuthTab('login')"
+            class="flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-white text-indigo-700 shadow-sm">
+            Sign In
+          </button>
+          <button id="tab-signup-btn"
+            onclick="showAuthTab('signup')"
+            class="flex-1 py-2 rounded-lg text-sm font-bold transition-all text-white/70 hover:text-white">
+            Create Account
+          </button>
+        </div>
+
+        <!-- Auth error message -->
+        <div id="auth-error" class="hidden mb-4 bg-rose-500/20 border border-rose-400/40 text-rose-200 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
+          <i class="fa-solid fa-circle-exclamation shrink-0"></i>
+          <span id="auth-error-text"></span>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1.5">Email Address</label>
+            <input id="login-email" type="email" required
+              placeholder="alice@spf.com"
+              class="auth-input w-full bg-white/10 border border-white/20 text-white placeholder-white/40 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1.5">Password</label>
+            <div class="relative">
+              <input id="login-password" type="password" required
+                placeholder="••••••••"
+                class="auth-input w-full bg-white/10 border border-white/20 text-white placeholder-white/40 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 transition-all pr-11">
+              <button type="button" onclick="togglePwd('login-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors">
+                <i class="fa-solid fa-eye text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Demo hint -->
+          <div class="bg-white/5 rounded-xl p-3 text-xs text-white/60 space-y-1 border border-white/10">
+            <p class="font-bold text-white/80 mb-1">Demo Accounts</p>
+            <p><span class="text-indigo-300 font-mono">alice@spf.com</span> / <span class="font-mono">password123</span> (User)</p>
+            <p><span class="text-indigo-300 font-mono">admin@spf.com</span> / <span class="font-mono">admin123</span> (Admin)</p>
+          </div>
+
+          <button type="submit" id="login-submit-btn"
+            class="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 mt-2">
+            <i class="fa-solid fa-right-to-bracket"></i>
+            Sign In to Dashboard
+          </button>
+        </form>
+
+        <!-- SIGNUP FORM (hidden by default) -->
+        <form id="signup-form" onsubmit="handleSignup(event)" class="space-y-4 hidden">
+          <div>
+            <label class="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1.5">Full Name</label>
+            <input id="signup-name" type="text" required
+              placeholder="Your Name"
+              class="auth-input w-full bg-white/10 border border-white/20 text-white placeholder-white/40 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1.5">Email Address</label>
+            <input id="signup-email" type="email" required
+              placeholder="you@example.com"
+              class="auth-input w-full bg-white/10 border border-white/20 text-white placeholder-white/40 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 transition-all">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-white/70 uppercase tracking-wider mb-1.5">Password</label>
+            <div class="relative">
+              <input id="signup-password" type="password" required minlength="6"
+                placeholder="Min 6 characters"
+                class="auth-input w-full bg-white/10 border border-white/20 text-white placeholder-white/40 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-400 transition-all pr-11">
+              <button type="button" onclick="togglePwd('signup-password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors">
+                <i class="fa-solid fa-eye text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="signup-submit-btn"
+            class="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/30 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 mt-2">
+            <i class="fa-solid fa-user-plus"></i>
+            Create My Account
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==========================================
+       MAIN APP (Dashboard) — hidden until auth
+       ========================================== -->
+  <div id="main-app" class="hidden h-full flex flex-col md:flex-row">
+
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="w-full md:w-64 bg-slate-900 text-white flex flex-col shrink-0 border-r border-slate-800">
+      <!-- Brand Header -->
+      <div class="p-6 flex items-center gap-3 border-b border-slate-800">
+        <div class="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-md shadow-indigo-600/30">
+          <i class="fa-solid fa-map-location-dot"></i>
+        </div>
+        <div>
+          <h1 class="font-extrabold text-lg tracking-tight leading-none text-slate-100">Smart Place</h1>
+          <span class="text-xs text-indigo-400 font-medium">Finder Platform</span>
+        </div>
+      </div>
+      
+      <!-- Navigation Menus -->
+      <nav class="flex-1 p-4 space-y-1">
+        <button onclick="switchTab('explore')" id="nav-explore" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all font-semibold">
+          <i class="fa-solid fa-compass w-5 text-center"></i>
+          Explore Cafes
+        </button>
+        <button onclick="switchTab('folders')" id="nav-folders" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all font-semibold">
+          <i class="fa-solid fa-folder-open w-5 text-center"></i>
+          My Folders
+        </button>
+        <!-- Admin tab: only shown if role === 'admin' -->
+        <button onclick="switchTab('admin')" id="nav-admin" class="w-full hidden items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all font-semibold relative">
+          <i class="fa-solid fa-shield-halved w-5 text-center"></i>
+          Admin Panel
+          <span id="pending-badge" class="absolute right-4 bg-amber-500 text-slate-900 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full hidden">0</span>
+        </button>
+        <button onclick="switchTab('profile')" id="nav-profile" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition-all font-semibold">
+          <i class="fa-solid fa-circle-user w-5 text-center"></i>
+          My Profile
+        </button>
+      </nav>
+      
+      <!-- User Footer -->
+      <div class="p-4 border-t border-slate-800 bg-slate-950/50">
+        <div class="flex items-center gap-3 mb-3">
+          <img id="user-avatar-sidebar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" alt="Avatar" class="h-10 w-10 rounded-full object-cover border border-slate-700 bg-slate-800 shrink-0">
+          <div class="overflow-hidden flex-1">
+            <h4 id="user-name-sidebar" class="font-bold text-sm text-slate-200 truncate">Loading...</h4>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span id="user-role-badge" class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">user</span>
+            </div>
+          </div>
+        </div>
+        <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 text-xs font-bold text-slate-500 hover:text-rose-400 hover:bg-rose-950/30 transition-all py-2 px-3 rounded-lg">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden">
+      <!-- Header banner -->
+      <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+        <div>
+          <h2 id="view-title" class="font-extrabold text-2xl text-slate-900">Explore Cafes</h2>
+          <p id="view-subtitle" class="text-sm text-slate-500 mt-0.5">Discover and explore cafes rated by our community.</p>
+        </div>
+        <div id="header-actions">
+          <button onclick="openModal('add-cafe-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+            <i class="fa-solid fa-plus"></i>
+            Add Cafe
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Content Panel -->
+      <section class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        
+        <!-- 1. EXPLORE VIEW -->
+        <div id="view-explore" class="tab-view space-y-6">
+          <!-- Search bar -->
+          <div class="relative max-w-md bg-white rounded-xl shadow-sm border border-slate-200">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="search-input" onkeyup="filterCafes()" placeholder="Search cafes by name or address..." class="w-full bg-transparent border-0 pl-11 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+          </div>
+          
+          <!-- Cafe Feed grid -->
+          <div id="cafes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamically populated -->
+          </div>
+          
+          <!-- Empty explore message -->
+          <div id="explore-empty" class="hidden text-center py-20 bg-white border border-dashed border-slate-300 rounded-2xl">
+            <div class="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 text-2xl mx-auto mb-4">
+              <i class="fa-solid fa-mug-hot"></i>
+            </div>
+            <h4 class="font-extrabold text-slate-900 text-lg">No Cafes Found</h4>
+            <p class="text-sm text-slate-500 mt-1">Check back later or register a new cafe!</p>
+          </div>
+        </div>
+
+        <!-- 2. FOLDERS VIEW -->
+        <div id="view-folders" class="tab-view hidden space-y-8">
+          <!-- Create Folder Panel -->
+          <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-xl">
+            <h3 class="font-extrabold text-lg text-slate-900 mb-2">Create New Favorites Folder</h3>
+            <p class="text-sm text-slate-500 mb-4">Organize your preferred spots into folders (e.g., "Workspots", "Sunset Views").</p>
+            <form onsubmit="handleCreateFolder(event)" class="flex gap-3">
+              <input type="text" id="folder-name-input" required placeholder="Folder name (e.g. Favorite Coffee Spots)..." class="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+              <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all shadow-md shadow-slate-950/10 shrink-0">
+                Create Folder
+              </button>
+            </form>
+          </div>
+
+          <!-- Folders Grid -->
+          <div class="space-y-4">
+            <h3 class="font-extrabold text-xl text-slate-900">Your Favorite Folders</h3>
+            <div id="folders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Empty Folders message -->
+          <div id="folders-empty" class="hidden text-center py-20 bg-white border border-dashed border-slate-300 rounded-2xl">
+            <div class="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 text-2xl mx-auto mb-4">
+              <i class="fa-solid fa-folder-open"></i>
+            </div>
+            <h4 class="font-extrabold text-slate-900 text-lg">No Folders Created</h4>
+            <p class="text-sm text-slate-500 mt-1">Create a folder above to organize your favorite cafes.</p>
+          </div>
+        </div>
+
+        <!-- 3. ADMIN PANEL VIEW -->
+        <div id="view-admin" class="tab-view hidden space-y-6">
+          <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 flex gap-3 text-sm">
+            <i class="fa-solid fa-circle-info mt-0.5 text-amber-600 text-base"></i>
+            <div>
+              <span class="font-bold">Moderator View:</span> Newly registered cafes require admin review. Review items below to approve or reject them. Approved cafes become immediately visible to the public.
+            </div>
+          </div>
+
+          <!-- Pending Cafes List -->
+          <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <span class="font-extrabold text-slate-900 text-sm">Pending Verification List</span>
+              <span id="pending-count-label" class="bg-amber-100 text-amber-800 text-xs font-extrabold px-2 py-0.5 rounded-full">0 pending</span>
+            </div>
+            
+            <div id="admin-pending-list" class="divide-y divide-slate-100">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Empty Admin list message -->
+          <div id="admin-empty" class="hidden text-center py-20 bg-white border border-dashed border-slate-300 rounded-2xl">
+            <div class="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h4 class="font-extrabold text-slate-900 text-lg">Queue Clean & Clear</h4>
+            <p class="text-sm text-slate-500 mt-1">All cafe registrations have been successfully reviewed!</p>
+          </div>
+        </div>
+
+        <!-- 4. PROFILE VIEW -->
+        <div id="view-profile" class="tab-view hidden">
+          <div class="bg-white border border-slate-200 rounded-2xl shadow-sm max-w-2xl p-6">
+            <div class="flex items-center gap-5 border-b border-slate-100 pb-6 mb-6">
+              <img id="user-avatar-form" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" alt="Avatar" class="h-20 w-20 rounded-full object-cover border-2 border-indigo-100 shadow-inner">
+              <div>
+                <h3 id="user-name-form" class="font-extrabold text-slate-900 text-xl">Loading User...</h3>
+                <p id="user-bio-form" class="text-sm text-slate-500 mt-0.5">Loading user description...</p>
+                <span id="user-email-form" class="text-xs text-indigo-600 font-semibold mt-1 block"></span>
+              </div>
+            </div>
+
+            <form onsubmit="handleUpdateProfile(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Display Name</label>
+                <input type="text" id="profile-name-input" required class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div>
+                <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Short Bio</label>
+                <textarea id="profile-bio-input" rows="3" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+              </div>
+              <div>
+                <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Profile Picture URL</label>
+                <input type="url" id="profile-pic-input" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              </div>
+              <div class="pt-4 border-t border-slate-100 flex justify-end">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md shadow-indigo-600/20 transition-all">
+                  Save Profile Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+      </section>
+    </main>
+
+  </div>
+
+
+  <!-- ==========================================
+       MODAL: ADD CAFE
+       ========================================== -->
+  <div id="add-cafe-modal" class="fixed inset-0 hidden z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 transition-all">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <h3 class="font-extrabold text-xl text-slate-900">Register New Cafe</h3>
+        <button onclick="closeModal('add-cafe-modal')" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form onsubmit="handleCreateCafe(event)" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+        <div>
+          <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1.5">Cafe Name *</label>
+          <input type="text" id="cafe-name" required placeholder="e.g. Blue Bottle Coffee" class="w-full border border-slate-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1.5">Address *</label>
+          <input type="text" id="cafe-address" required placeholder="e.g. Jl. Melawai No. 34, Jakarta" class="w-full border border-slate-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1.5">Photo URL</label>
+          <input type="url" id="cafe-photo" placeholder="https://images.unsplash.com/..." class="w-full border border-slate-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1.5">Description</label>
+          <textarea id="cafe-desc" rows="3" placeholder="Briefly describe the atmosphere, specialty beans..." class="w-full border border-slate-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"></textarea>
+        </div>
+        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/80">
+          <span class="block text-xs font-extrabold text-indigo-900 uppercase tracking-wider mb-2">Initial Review</span>
+          <textarea id="cafe-review" rows="2" placeholder="Leave your review/thoughts on this place..." class="w-full border border-slate-300 rounded-xl bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"></textarea>
+        </div>
+        <div class="pt-4 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+          <button type="button" onclick="closeModal('add-cafe-modal')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-sm transition-all">
+            Cancel
+          </button>
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-xl text-sm shadow-md shadow-indigo-600/20 transition-all">
+            Submit Cafe
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: CAFE DETAIL & REVIEWS / PRIVATE NOTES
+       ========================================== -->
+  <div id="cafe-detail-modal" class="fixed inset-0 hidden z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 transition-all">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <h3 id="detail-title" class="font-extrabold text-xl text-slate-900">Cafe Details</h3>
+        <button onclick="closeModal('cafe-detail-modal')" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <!-- Hero section image -->
+        <div class="relative h-64 w-full rounded-xl overflow-hidden bg-slate-100">
+          <img id="detail-image" src="" alt="Cafe Photo" class="h-full w-full object-cover">
+          <div class="absolute top-4 right-4 bg-white/95 px-3 py-1.5 rounded-lg shadow-md font-bold text-sm text-slate-900 flex items-center gap-1.5">
+            <i class="fa-solid fa-star text-yellow-400"></i>
+            <span id="detail-rating">0.0</span>
+          </div>
+        </div>
+
+        <!-- Meta info -->
+        <div class="space-y-2">
+          <h2 id="detail-name" class="font-extrabold text-2xl text-slate-900">Loading...</h2>
+          <div class="flex gap-2 items-center text-sm text-slate-500">
+            <i class="fa-solid fa-location-dot text-indigo-500"></i>
+            <span id="detail-address">Loading Address...</span>
+          </div>
+          <p id="detail-desc" class="text-slate-600 text-sm mt-3 leading-relaxed">Loading description...</p>
+        </div>
+
+        <!-- Personal Notes Section -->
+        <div class="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100 flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-extrabold text-indigo-900 tracking-wide flex items-center gap-2">
+              <i class="fa-solid fa-lock text-indigo-600"></i>
+              Your Private Notes
+            </span>
+            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Only visible to you</span>
+          </div>
+          
+          <div id="notes-view-panel">
+            <p id="notes-text" class="text-sm italic text-slate-600 bg-white p-3 rounded-xl border border-slate-100 shadow-inner">No private notes added yet.</p>
+            <button onclick="showNotesEditor()" class="text-indigo-600 hover:text-indigo-800 text-xs font-extrabold flex items-center gap-1 mt-2">
+              <i class="fa-solid fa-pen-to-square"></i>
+              Edit Private Note
+            </button>
+          </div>
+          
+          <div id="notes-edit-panel" class="hidden space-y-2">
+            <textarea id="notes-input" rows="2" placeholder="Write details like: Password WiFi, best seats, favorite pastries..." class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+            <div class="flex gap-2 justify-end">
+              <button onclick="hideNotesEditor()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">Cancel</button>
+              <button onclick="handleSaveNote()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-1.5 rounded-lg shadow-sm">Save Note</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Review Form -->
+        <div class="border-t border-slate-100 pt-6">
+          <h4 class="font-extrabold text-slate-900 text-lg mb-4">Add a Review & Rating</h4>
+          <form onsubmit="handleAddReview(event)" class="space-y-4">
+            <div class="flex items-center gap-4">
+              <div>
+                <label class="block text-xs font-extrabold text-slate-900 uppercase mb-1.5">Rating</label>
+                <select id="review-rating-select" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                  <option value="5">⭐⭐⭐⭐⭐ (5 - Perfect)</option>
+                  <option value="4">⭐⭐⭐⭐ (4 - Good)</option>
+                  <option value="3">⭐⭐⭐ (3 - Normal)</option>
+                  <option value="2">⭐⭐ (2 - Bad)</option>
+                  <option value="1">⭐ (1 - Terrible)</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-extrabold text-slate-900 uppercase mb-1.5">Your Review</label>
+              <textarea id="review-text-input" rows="2" required placeholder="Write details about taste, pricing, seating space, speed of internet..." class="w-full border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" class="bg-slate-950 hover:bg-slate-800 text-white font-bold px-5 py-2 rounded-xl text-sm transition-all shadow-md">
+                Post Public Review
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Public Reviews List -->
+        <div class="border-t border-slate-100 pt-6 space-y-4">
+          <h4 class="font-extrabold text-slate-900 text-lg">Public Reviews</h4>
+          <div id="detail-reviews-list" class="space-y-4">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: SELECT FOLDER FOR FAVORITING
+       ========================================== -->
+  <div id="select-folder-modal" class="fixed inset-0 hidden z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 transition-all">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 flex flex-col">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-extrabold text-slate-900 text-lg">Save to Favorites</h3>
+        <button onclick="closeModal('select-folder-modal')" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="fav-cafe-id-input">
+        <div>
+          <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">Select Target Folder</label>
+          <select id="folder-select-dropdown" class="w-full border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+        <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <button onclick="closeModal('select-folder-modal')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-sm transition-all">
+            Cancel
+          </button>
+          <button onclick="handleSaveToFolder()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-xl text-sm shadow-md shadow-indigo-600/20 transition-all">
+            Save Favorite
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL: VIEW FOLDER DETAIL
+       ========================================== -->
+  <div id="folder-detail-modal" class="fixed inset-0 hidden z-50 flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 transition-all">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 flex flex-col max-h-[85vh]">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <h3 id="folder-detail-name" class="font-extrabold text-xl text-slate-900">Folder Name</h3>
+        <button onclick="closeModal('folder-detail-modal')" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <div id="folder-cafes-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Dynamically populated -->
+        </div>
+        <div id="folder-detail-empty" class="hidden text-center py-10">
+          <p class="text-slate-500 italic text-sm">No cafes saved in this folder yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==========================================
+       JAVASCRIPT LOGIC & GRAPHQL CLIENT
+       ========================================== -->
+  <script>
+    // ─── Auth State ───────────────────────────────────────────────────────
+    let AUTH_TOKEN = localStorage.getItem('spf_token') || null;
+    let CURRENT_USER = null;
+    let ACTIVE_USER_ID = null;
+    let CURRENT_TAB = 'explore';
+    let CACHED_CAFES = [];
+    let CACHED_FOLDERS = [];
+    let ACTIVE_CAFE_DETAIL = null;
+    let ACTIVE_NOTE = null;
+
+    // ─── Boot ─────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (AUTH_TOKEN) {
+        const valid = await tryAutoLogin();
+        if (valid) return bootDashboard();
+      }
+      showAuthGate();
+    });
+
+    async function tryAutoLogin() {
+      const query = `query { me { id name email role bio profilePic } }`;
+      const data = await callGraphQL(query, {}, true /* silent errors */);
+      if (data && data.me) {
+        CURRENT_USER = data.me;
+        ACTIVE_USER_ID = String(data.me.id);
+        return true;
+      }
+      AUTH_TOKEN = null;
+      localStorage.removeItem('spf_token');
+      return false;
+    }
+
+    function showAuthGate() {
+      document.getElementById('auth-gate').classList.remove('hidden');
+      document.getElementById('main-app').classList.add('hidden');
+    }
+
+    function bootDashboard() {
+      document.getElementById('auth-gate').classList.add('hidden');
+      document.getElementById('main-app').classList.remove('hidden');
+      document.getElementById('main-app').style.display = 'flex';
+
+      // Populate UI with user info
+      renderUserInfo();
+
+      // Show/hide admin tab based on role
+      const adminNav = document.getElementById('nav-admin');
+      if (CURRENT_USER.role === 'admin') {
+        adminNav.classList.remove('hidden');
+        adminNav.classList.add('flex');
+      } else {
+        adminNav.classList.add('hidden');
+      }
+
+      // Load initial data
+      loadExploreData();
+      if (CURRENT_USER.role === 'admin') loadPendingBadgeCount();
+      updateTabButtonStyles();
+    }
+
+    function renderUserInfo() {
+      document.getElementById('user-name-sidebar').innerText = CURRENT_USER.name;
+
+      const roleBadge = document.getElementById('user-role-badge');
+      if (CURRENT_USER.role === 'admin') {
+        roleBadge.innerText = '👑 Admin';
+        roleBadge.className = 'text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300';
+      } else {
+        roleBadge.innerText = 'User';
+        roleBadge.className = 'text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-700 text-slate-300';
+      }
+
+      if (CURRENT_USER.profilePic) {
+        document.getElementById('user-avatar-sidebar').src = CURRENT_USER.profilePic;
+        document.getElementById('user-avatar-form').src = CURRENT_USER.profilePic;
+      }
+      document.getElementById('user-name-form').innerText = CURRENT_USER.name;
+      document.getElementById('user-bio-form').innerText = CURRENT_USER.bio || 'No bio set.';
+      document.getElementById('user-email-form').innerText = CURRENT_USER.email;
+    }
+
+    // ─── Auth Tab Switcher ────────────────────────────────────────────────
+    function showAuthTab(tab) {
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      const loginBtn = document.getElementById('tab-login-btn');
+      const signupBtn = document.getElementById('tab-signup-btn');
+      clearAuthError();
+
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        signupForm.classList.add('hidden');
+        loginBtn.className = 'flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-white text-indigo-700 shadow-sm';
+        signupBtn.className = 'flex-1 py-2 rounded-lg text-sm font-bold transition-all text-white/70 hover:text-white';
+      } else {
+        loginForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+        signupBtn.className = 'flex-1 py-2 rounded-lg text-sm font-bold transition-all bg-white text-indigo-700 shadow-sm';
+        loginBtn.className = 'flex-1 py-2 rounded-lg text-sm font-bold transition-all text-white/70 hover:text-white';
+      }
+    }
+
+    function showAuthError(msg) {
+      document.getElementById('auth-error-text').innerText = msg;
+      document.getElementById('auth-error').classList.remove('hidden');
+    }
+
+    function clearAuthError() {
+      document.getElementById('auth-error').classList.add('hidden');
+    }
+
+    function togglePwd(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const isText = input.type === 'text';
+      input.type = isText ? 'password' : 'text';
+      btn.querySelector('i').className = isText ? 'fa-solid fa-eye text-sm' : 'fa-solid fa-eye-slash text-sm';
+    }
+
+    function setAuthBtnLoading(btnId, loading) {
+      const btn = document.getElementById(btnId);
+      if (loading) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="dot-pulse"><span></span><span></span><span></span></span>`;
+      } else {
+        btn.disabled = false;
+      }
+    }
+
+    // ─── Login Handler ────────────────────────────────────────────────────
+    async function handleLogin(event) {
+      event.preventDefault();
+      clearAuthError();
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      setAuthBtnLoading('login-submit-btn', true);
+
+      const mutation = `
+        mutation Login($email: String!, $password: String!) {
+          login(email: $email, password: $password) {
+            token
+            user { id name email role bio profilePic }
+          }
+        }
+      `;
+      const data = await callGraphQL(mutation, { email, password }, true);
+
+      setAuthBtnLoading('login-submit-btn', false);
+      document.getElementById('login-submit-btn').innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Sign In to Dashboard';
+
+      if (data && data.login) {
+        AUTH_TOKEN = data.login.token;
+        CURRENT_USER = data.login.user;
+        ACTIVE_USER_ID = String(data.login.user.id);
+        localStorage.setItem('spf_token', AUTH_TOKEN);
+        bootDashboard();
+      } else {
+        showAuthError('Invalid email or password. Please try again.');
+      }
+    }
+
+    // ─── Signup Handler ───────────────────────────────────────────────────
+    async function handleSignup(event) {
+      event.preventDefault();
+      clearAuthError();
+      const name = document.getElementById('signup-name').value;
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+
+      if (password.length < 6) {
+        showAuthError('Password must be at least 6 characters long.');
+        return;
+      }
+
+      setAuthBtnLoading('signup-submit-btn', true);
+
+      const mutation = `
+        mutation Signup($name: String!, $email: String!, $password: String!) {
+          signup(name: $name, email: $email, password: $password) {
+            token
+            user { id name email role bio profilePic }
+          }
+        }
+      `;
+      const data = await callGraphQL(mutation, { name, email, password }, true);
+
+      setAuthBtnLoading('signup-submit-btn', false);
+      document.getElementById('signup-submit-btn').innerHTML = '<i class="fa-solid fa-user-plus"></i> Create My Account';
+
+      if (data && data.signup) {
+        AUTH_TOKEN = data.signup.token;
+        CURRENT_USER = data.signup.user;
+        ACTIVE_USER_ID = String(data.signup.user.id);
+        localStorage.setItem('spf_token', AUTH_TOKEN);
+        bootDashboard();
+      } else {
+        showAuthError('Registration failed. That email may already be in use.');
+      }
+    }
+
+    // ─── Logout ───────────────────────────────────────────────────────────
+    function handleLogout() {
+      AUTH_TOKEN = null;
+      CURRENT_USER = null;
+      ACTIVE_USER_ID = null;
+      localStorage.removeItem('spf_token');
+      // Reset state
+      CACHED_CAFES = [];
+      CACHED_FOLDERS = [];
+      document.getElementById('main-app').style.display = 'none';
+      document.getElementById('main-app').classList.add('hidden');
+      // Clear form fields for security
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-password').value = '';
+      document.getElementById('signup-name').value = '';
+      document.getElementById('signup-email').value = '';
+      document.getElementById('signup-password').value = '';
+      showAuthGate();
+      showAuthTab('login');
+    }
+
+    // ─── GraphQL Fetch Wrapper ────────────────────────────────────────────
+    async function callGraphQL(query, variables = {}, silent = false) {
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (AUTH_TOKEN) headers['Authorization'] = `Bearer ${AUTH_TOKEN}`;
+
+        const response = await fetch('/graphql', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ query, variables })
+        });
+        const result = await response.json();
+        
+        if (result.errors) {
+          console.error('GraphQL errors:', result.errors);
+          if (!silent) alert('API Error: ' + result.errors[0].message);
+          return null;
+        }
+        return result.data;
+      } catch (error) {
+        console.error('Request failed:', error);
+        if (!silent) alert('Network error, check database container status.');
+        return null;
+      }
+    }
+
+    // ─── Tab Switching ────────────────────────────────────────────────────
+    function switchTab(tabId) {
+      CURRENT_TAB = tabId;
+      document.querySelectorAll('.tab-view').forEach(view => view.classList.add('hidden'));
+      document.getElementById(`view-${tabId}`).classList.remove('hidden');
+      
+      const headerTitle = document.getElementById('view-title');
+      const headerSubtitle = document.getElementById('view-subtitle');
+      const headerActions = document.getElementById('header-actions');
+      
+      if (tabId === 'explore') {
+        headerTitle.innerText = "Explore Cafes";
+        headerSubtitle.innerText = "Discover and explore cafes rated by our community.";
+        headerActions.classList.remove('hidden');
+        loadExploreData();
+      } else if (tabId === 'folders') {
+        headerTitle.innerText = "My Folders";
+        headerSubtitle.innerText = "Organize, save, and structure your favorited spots.";
+        headerActions.classList.add('hidden');
+        loadFoldersData();
+      } else if (tabId === 'admin') {
+        headerTitle.innerText = "Admin Panel";
+        headerSubtitle.innerText = "Manage user-submitted cafe listings and publications.";
+        headerActions.classList.add('hidden');
+        loadAdminData();
+      } else if (tabId === 'profile') {
+        headerTitle.innerText = "My Profile";
+        headerSubtitle.innerText = "Manage your account details, name, and profile photos.";
+        headerActions.classList.add('hidden');
+        populateProfileForm();
+      }
+      updateTabButtonStyles();
+    }
+
+    function updateTabButtonStyles() {
+      document.querySelectorAll('aside nav button').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white');
+        btn.classList.add('text-slate-300', 'hover:bg-slate-800');
+      });
+      const activeBtn = document.getElementById(`nav-${CURRENT_TAB}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-300', 'hover:bg-slate-800');
+        activeBtn.classList.add('bg-indigo-600', 'text-white');
+      }
+    }
+
+    // ─── Modal Management ─────────────────────────────────────────────────
+    function openModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
+    function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+
+    // ─── User Profile Context ─────────────────────────────────────────────
+    function populateProfileForm() {
+      if (CURRENT_USER) {
+        document.getElementById('profile-name-input').value = CURRENT_USER.name;
+        document.getElementById('profile-bio-input').value = CURRENT_USER.bio || '';
+        document.getElementById('profile-pic-input').value = CURRENT_USER.profilePic || '';
+      }
+    }
+
+    async function handleUpdateProfile(event) {
+      event.preventDefault();
+      const name = document.getElementById('profile-name-input').value;
+      const bio = document.getElementById('profile-bio-input').value;
+      const profilePic = document.getElementById('profile-pic-input').value;
+
+      const mutation = `
+        mutation UpdateProfile($userId: ID!, $name: String, $bio: String, $profilePic: String) {
+          updateProfile(userId: $userId, name: $name, bio: $bio, profilePic: $profilePic) {
+            id name bio profilePic email role
+          }
+        }
+      `;
+      const data = await callGraphQL(mutation, { userId: ACTIVE_USER_ID, name, bio, profilePic });
+      if (data && data.updateProfile) {
+        // Sync local user cache
+        CURRENT_USER = { ...CURRENT_USER, ...data.updateProfile };
+        renderUserInfo();
+        alert('Profile updated successfully!');
+      }
+    }
+
+    // ─── Explore Page ─────────────────────────────────────────────────────
+    async function loadExploreData() {
+      const query = `
+        query GetCafes {
+          getCafes {
+            id name description address photo rating publishStatus
+          }
+        }
+      `;
+      const data = await callGraphQL(query);
+      if (data) {
+        CACHED_CAFES = data.getCafes;
+        renderCafesGrid(CACHED_CAFES);
+      }
+    }
+
+    function renderCafesGrid(cafes) {
+      const grid = document.getElementById('cafes-grid');
+      const emptyMsg = document.getElementById('explore-empty');
+      grid.innerHTML = '';
+
+      if (cafes.length === 0) { emptyMsg.classList.remove('hidden'); return; }
+      emptyMsg.classList.add('hidden');
+
+      cafes.forEach(cafe => {
+        const isAdmin = CURRENT_USER && CURRENT_USER.role === 'admin';
+        const deleteBtn = isAdmin ? `
+          <button onclick="handleDeleteCafe(${cafe.id})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs p-2 rounded-lg transition-all" title="Delete Cafe">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>` : '';
+
+        const card = `
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col group hover:shadow-md transition-all duration-300 hover:scale-[1.01]">
+            <div class="h-48 bg-slate-100 relative overflow-hidden shrink-0">
+              <img src="${cafe.photo || 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500'}" alt="Cafe Image" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-500">
+              <div class="absolute top-3 right-3 bg-white/95 px-2.5 py-1 rounded-lg shadow-sm font-bold text-xs text-slate-900 flex items-center gap-1">
+                <i class="fa-solid fa-star text-yellow-400"></i>
+                <span>${cafe.rating ? cafe.rating.toFixed(1) : '0.0'}</span>
+              </div>
+            </div>
+            <div class="p-5 flex-1 flex flex-col justify-between">
+              <div class="space-y-1">
+                <h4 class="font-extrabold text-slate-900 text-lg leading-tight">${cafe.name}</h4>
+                <p class="text-xs text-indigo-600 font-semibold flex items-center gap-1">
+                  <i class="fa-solid fa-location-dot"></i>
+                  <span class="truncate max-w-[200px]">${cafe.address}</span>
+                </p>
+                <p class="text-xs text-slate-500 line-clamp-2 mt-2 leading-relaxed">${cafe.description || 'No description provided.'}</p>
+              </div>
+              
+              <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                <button onclick="openCafeDetails(${cafe.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-xs px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-1 justify-center">
+                  <i class="fa-solid fa-circle-info"></i> Details
+                </button>
+                <button onclick="openAddToFolderModal(${cafe.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 flex-1 justify-center">
+                  <i class="fa-solid fa-bookmark"></i> Save
+                </button>
+                ${deleteBtn}
+              </div>
+            </div>
+          </div>
+        `;
+        grid.insertAdjacentHTML('beforeend', card);
+      });
+    }
+
+    function filterCafes() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const filtered = CACHED_CAFES.filter(c =>
+        c.name.toLowerCase().includes(search) ||
+        c.address.toLowerCase().includes(search)
+      );
+      renderCafesGrid(filtered);
+    }
+
+    function getStarHtml(rating) {
+      let stars = '';
+      const floor = Math.floor(rating || 0);
+      for (let i = 1; i <= 5; i++) {
+        if (i <= floor) stars += `<i class="fa-solid fa-star text-yellow-400"></i>`;
+        else if (i - 0.5 <= rating) stars += `<i class="fa-solid fa-star-half-stroke text-yellow-400"></i>`;
+        else stars += `<i class="fa-regular fa-star text-slate-300"></i>`;
+      }
+      return stars;
+    }
+
+    // ─── Cafe Creation ────────────────────────────────────────────────────
+    async function handleCreateCafe(event) {
+      event.preventDefault();
+      const name = document.getElementById('cafe-name').value;
+      const address = document.getElementById('cafe-address').value;
+      const photo = document.getElementById('cafe-photo').value || null;
+      const description = document.getElementById('cafe-desc').value || null;
+      const review = document.getElementById('cafe-review').value || null;
+
+      const mutation = `
+        mutation CreateCafe($name: String!, $description: String, $address: String!, $photo: String, $review: String) {
+          createCafe(name: $name, description: $description, address: $address, photo: $photo, review: $review) {
+            id name publishStatus
+          }
+        }
+      `;
+      const data = await callGraphQL(mutation, { name, description, address, photo, review });
+      if (data) {
+        alert('Cafe successfully registered! Pending moderator review.');
+        closeModal('add-cafe-modal');
+        event.target.reset();
+        await loadExploreData();
+        if (CURRENT_USER.role === 'admin') await loadPendingBadgeCount();
+      }
+    }
+
+    async function handleDeleteCafe(id) {
+      if (!confirm('Are you sure you want to permanently delete this cafe and all associated reviews/notes?')) return;
+      const mutation = `mutation DeleteCafe($id: ID!) { deleteCafe(id: $id) }`;
+      const data = await callGraphQL(mutation, { id });
+      if (data && data.deleteCafe) {
+        alert('Cafe successfully deleted.');
+        await loadExploreData();
+      }
+    }
+
+    // ─── Cafe Details Modal ───────────────────────────────────────────────
+    async function openCafeDetails(id) {
+      const query = `
+        query GetCafeDetails($id: ID!, $userId: ID!) {
+          getCafeById(id: $id) {
+            id name description address photo rating publishStatus
+            reviews {
+              id rating reviewText
+              user { id name profilePic }
+            }
+            personalNotes(userId: $userId) {
+              id noteText
+            }
+          }
+        }
+      `;
+      const data = await callGraphQL(query, { id, userId: ACTIVE_USER_ID });
+      if (data && data.getCafeById) {
+        ACTIVE_CAFE_DETAIL = data.getCafeById;
+        
+        document.getElementById('detail-name').innerText = ACTIVE_CAFE_DETAIL.name;
+        document.getElementById('detail-address').innerText = ACTIVE_CAFE_DETAIL.address;
+        document.getElementById('detail-desc').innerText = ACTIVE_CAFE_DETAIL.description || "No description provided.";
+        document.getElementById('detail-rating').innerText = ACTIVE_CAFE_DETAIL.rating ? ACTIVE_CAFE_DETAIL.rating.toFixed(1) : '0.0';
+        document.getElementById('detail-image').src = ACTIVE_CAFE_DETAIL.photo || 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500';
+
+        const notes = ACTIVE_CAFE_DETAIL.personalNotes;
+        const noteTextEl = document.getElementById('notes-text');
+        if (notes && notes.length > 0) {
+          ACTIVE_NOTE = notes[0];
+          noteTextEl.innerText = ACTIVE_NOTE.noteText;
+          noteTextEl.classList.remove('text-slate-500', 'italic');
+        } else {
+          ACTIVE_NOTE = null;
+          noteTextEl.innerText = "No private notes added yet. (e.g. WiFi Password, seating preference)";
+          noteTextEl.classList.add('text-slate-500', 'italic');
+        }
+        hideNotesEditor();
+        renderReviewsList(ACTIVE_CAFE_DETAIL.reviews);
+        openModal('cafe-detail-modal');
+      }
+    }
+
+    function renderReviewsList(reviews) {
+      const container = document.getElementById('detail-reviews-list');
+      container.innerHTML = '';
+      if (!reviews || reviews.length === 0) {
+        container.innerHTML = '<p class="text-xs text-slate-500 italic">No reviews submitted yet.</p>';
+        return;
+      }
+      reviews.forEach(rev => {
+        const starHtml = getStarHtml(rev.rating);
+        const avatar = rev.user && rev.user.profilePic ? rev.user.profilePic : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150';
+        const name = rev.user ? rev.user.name : 'Unknown User';
+        const reviewBlock = `
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <img src="${avatar}" class="h-7 w-7 rounded-full object-cover border border-slate-200">
+                <span class="font-bold text-slate-900 text-xs">${name}</span>
+              </div>
+              <div class="text-[10px] flex gap-0.5">${starHtml}</div>
+            </div>
+            <p class="text-slate-700 text-xs leading-relaxed pl-1.5 border-l-2 border-slate-200">${rev.reviewText}</p>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', reviewBlock);
+      });
+    }
+
+    // ─── Private Note Logic ───────────────────────────────────────────────
+    function showNotesEditor() {
+      document.getElementById('notes-view-panel').classList.add('hidden');
+      document.getElementById('notes-edit-panel').classList.remove('hidden');
+      document.getElementById('notes-input').value = ACTIVE_NOTE ? ACTIVE_NOTE.noteText : '';
+    }
+    function hideNotesEditor() {
+      document.getElementById('notes-view-panel').classList.remove('hidden');
+      document.getElementById('notes-edit-panel').classList.add('hidden');
+    }
+
+    async function handleSaveNote() {
+      const text = document.getElementById('notes-input').value;
+      if (!text.trim()) return;
+
+      if (ACTIVE_NOTE) {
+        const mutation = `
+          mutation UpdatePersonalNote($id: ID!, $noteText: String!) {
+            updatePersonalNote(id: $id, noteText: $noteText) { id noteText }
+          }
+        `;
+        const data = await callGraphQL(mutation, { id: ACTIVE_NOTE.id, noteText: text });
+        if (data) { alert('Note updated.'); await openCafeDetails(ACTIVE_CAFE_DETAIL.id); }
+      } else {
+        const mutation = `
+          mutation AddPersonalNote($userId: ID!, $cafeId: ID!, $noteText: String!) {
+            addPersonalNote(userId: $userId, cafeId: $cafeId, noteText: $noteText) { id noteText }
+          }
+        `;
+        const data = await callGraphQL(mutation, { userId: ACTIVE_USER_ID, cafeId: ACTIVE_CAFE_DETAIL.id, noteText: text });
+        if (data) { alert('Note saved.'); await openCafeDetails(ACTIVE_CAFE_DETAIL.id); }
+      }
+    }
+
+    // ─── Add Review Logic ─────────────────────────────────────────────────
+    async function handleAddReview(event) {
+      event.preventDefault();
+      const rating = parseInt(document.getElementById('review-rating-select').value);
+      const text = document.getElementById('review-text-input').value;
+      const mutation = `
+        mutation AddReview($cafeId: ID!, $userId: ID!, $rating: Int!, $reviewText: String!) {
+          addReview(cafeId: $cafeId, userId: $userId, rating: $rating, reviewText: $reviewText) {
+            id rating reviewText
+          }
+        }
+      `;
+      const data = await callGraphQL(mutation, { cafeId: ACTIVE_CAFE_DETAIL.id, userId: ACTIVE_USER_ID, rating, reviewText: text });
+      if (data) {
+        alert('Review posted successfully!');
+        document.getElementById('review-text-input').value = '';
+        await openCafeDetails(ACTIVE_CAFE_DETAIL.id);
+        await loadExploreData();
+      }
+    }
+
+    // ─── Favorites Folders Management ─────────────────────────────────────
+    async function loadFoldersData() {
+      const query = `
+        query GetFolders($userId: ID!) {
+          getUserFolders(userId: $userId) {
+            id name cafes { id name photo rating address }
+          }
+        }
+      `;
+      const data = await callGraphQL(query, { userId: ACTIVE_USER_ID });
+      if (data) { CACHED_FOLDERS = data.getUserFolders; renderFoldersGrid(CACHED_FOLDERS); }
+    }
+
+    function renderFoldersGrid(folders) {
+      const grid = document.getElementById('folders-grid');
+      const emptyMsg = document.getElementById('folders-empty');
+      grid.innerHTML = '';
+      if (folders.length === 0) { emptyMsg.classList.remove('hidden'); return; }
+      emptyMsg.classList.add('hidden');
+      folders.forEach(fold => {
+        const cafeCount = fold.cafes ? fold.cafes.length : 0;
+        const card = `
+          <div onclick="openFolderDetail(${fold.id})" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all cursor-pointer group flex items-start gap-4">
+            <div class="h-12 w-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 text-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+              <i class="fa-solid fa-folder"></i>
+            </div>
+            <div class="overflow-hidden">
+              <h4 class="font-extrabold text-slate-900 text-base group-hover:text-indigo-600 transition-colors truncate">${fold.name}</h4>
+              <span class="text-xs text-slate-500 font-medium block mt-1">${cafeCount} cafes saved</span>
+            </div>
+          </div>
+        `;
+        grid.insertAdjacentHTML('beforeend', card);
+      });
+    }
+
+    async function handleCreateFolder(event) {
+      event.preventDefault();
+      const name = document.getElementById('folder-name-input').value;
+      const mutation = `
+        mutation CreateFolder($userId: ID!, $name: String!) {
+          createFolder(userId: $userId, name: $name) { id name }
+        }
+      `;
+      const data = await callGraphQL(mutation, { userId: ACTIVE_USER_ID, name });
+      if (data) {
+        alert('Folder created successfully!');
+        document.getElementById('folder-name-input').value = '';
+        await loadFoldersData();
+      }
+    }
+
+    function openFolderDetail(id) {
+      const folder = CACHED_FOLDERS.find(f => f.id == id);
+      if (!folder) return;
+      document.getElementById('folder-detail-name').innerText = folder.name;
+      const list = document.getElementById('folder-cafes-list');
+      const emptyMsg = document.getElementById('folder-detail-empty');
+      list.innerHTML = '';
+      const cafes = folder.cafes || [];
+      if (cafes.length === 0) {
+        emptyMsg.classList.remove('hidden');
+      } else {
+        emptyMsg.classList.add('hidden');
+        cafes.forEach(cafe => {
+          const item = `
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center gap-3">
+              <img src="${cafe.photo || 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500'}" class="h-12 w-12 rounded-lg object-cover bg-white">
+              <div class="overflow-hidden flex-1">
+                <h5 class="font-extrabold text-slate-900 text-sm truncate">${cafe.name}</h5>
+                <span class="text-xs text-slate-500 block truncate mt-0.5">${cafe.address}</span>
+              </div>
+              <div class="flex items-center gap-0.5 font-bold text-xs text-slate-900 bg-white px-2 py-1 rounded border border-slate-200 shrink-0">
+                <i class="fa-solid fa-star text-yellow-400"></i>
+                <span>${cafe.rating ? cafe.rating.toFixed(1) : '0.0'}</span>
+              </div>
+            </div>
+          `;
+          list.insertAdjacentHTML('beforeend', item);
+        });
+      }
+      openModal('folder-detail-modal');
+    }
+
+    // ─── Save to Folder Modal ─────────────────────────────────────────────
+    async function openAddToFolderModal(cafeId) {
+      document.getElementById('fav-cafe-id-input').value = cafeId;
+      const query = `
+        query GetFolders($userId: ID!) { getUserFolders(userId: $userId) { id name } }
+      `;
+      const data = await callGraphQL(query, { userId: ACTIVE_USER_ID });
+      if (data) {
+        const dropdown = document.getElementById('folder-select-dropdown');
+        dropdown.innerHTML = '';
+        const folders = data.getUserFolders || [];
+        if (folders.length === 0) { alert('You do not have any folders. Please create one in "My Folders" first.'); return; }
+        folders.forEach(fold => dropdown.insertAdjacentHTML('beforeend', `<option value="${fold.id}">${fold.name}</option>`));
+        openModal('select-folder-modal');
+      }
+    }
+
+    async function handleSaveToFolder() {
+      const cafeId = document.getElementById('fav-cafe-id-input').value;
+      const folderId = document.getElementById('folder-select-dropdown').value;
+      const mutation = `
+        mutation AddCafeToFolder($folderId: ID!, $cafeId: ID!) { addCafeToFolder(folderId: $folderId, cafeId: $cafeId) }
+      `;
+      const data = await callGraphQL(mutation, { folderId, cafeId });
+      if (data && data.addCafeToFolder) { alert('Cafe successfully added to folder!'); closeModal('select-folder-modal'); }
+    }
+
+    // ─── Admin Dashboard Review Panel ─────────────────────────────────────
+    async function loadAdminData() {
+      const query = `
+        query GetPendingCafes {
+          getPendingCafes { id name address description photo rating }
+        }
+      `;
+      const data = await callGraphQL(query);
+      if (data) {
+        const pendingList = data.getPendingCafes;
+        renderAdminList(pendingList);
+        updatePendingBadge(pendingList.length);
+      }
+    }
+
+    async function loadPendingBadgeCount() {
+      const query = `query GetPendingCafes { getPendingCafes { id } }`;
+      const data = await callGraphQL(query);
+      if (data && data.getPendingCafes) updatePendingBadge(data.getPendingCafes.length);
+    }
+
+    function updatePendingBadge(count) {
+      const badge = document.getElementById('pending-badge');
+      if (count > 0) { badge.innerText = count; badge.classList.remove('hidden'); }
+      else badge.classList.add('hidden');
+    }
+
+    function renderAdminList(cafes) {
+      const list = document.getElementById('admin-pending-list');
+      const emptyMsg = document.getElementById('admin-empty');
+      list.innerHTML = '';
+      if (cafes.length === 0) {
+        emptyMsg.classList.remove('hidden');
+        document.getElementById('pending-count-label').innerText = "0 pending";
+        return;
+      }
+      emptyMsg.classList.add('hidden');
+      document.getElementById('pending-count-label').innerText = `${cafes.length} pending`;
+      cafes.forEach(cafe => {
+        const item = `
+          <div class="p-6 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between hover:bg-slate-50 transition-colors">
+            <div class="flex gap-4 items-start overflow-hidden">
+              <img src="${cafe.photo || 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500'}" class="h-16 w-16 rounded-xl object-cover shrink-0 border border-slate-200">
+              <div class="overflow-hidden space-y-1">
+                <span class="bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full">Moderation Queue</span>
+                <h4 class="font-extrabold text-slate-900 text-base truncate leading-snug">${cafe.name}</h4>
+                <p class="text-xs text-slate-500 truncate flex items-center gap-1">
+                  <i class="fa-solid fa-location-dot"></i>
+                  <span>${cafe.address}</span>
+                </p>
+              </div>
+            </div>
+            <div class="flex gap-2.5 shrink-0 w-full sm:w-auto">
+              <button onclick="handleApproveReject(${cafe.id}, 'APPROVED')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all shadow-md shadow-emerald-600/10 flex-1 sm:flex-none">
+                <i class="fa-solid fa-check mr-1"></i> Approve & Publish
+              </button>
+              <button onclick="handleApproveReject(${cafe.id}, 'REJECTED')" class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-extrabold text-xs px-4 py-2.5 rounded-xl transition-all flex-1 sm:flex-none">
+                <i class="fa-solid fa-ban mr-1"></i> Reject
+              </button>
+            </div>
+          </div>
+        `;
+        list.insertAdjacentHTML('beforeend', item);
+      });
+    }
+
+    async function handleApproveReject(cafeId, status) {
+      const mutation = `
+        mutation ApproveReject($id: ID!, $status: PublishStatus!) {
+          updateCafePublishStatus(id: $id, publishStatus: $status) { id name publishStatus }
+        }
+      `;
+      const data = await callGraphQL(mutation, { id: cafeId, status });
+      if (data) { alert(`Cafe successfully ${status.toLowerCase()}!`); await loadAdminData(); }
+    }
+  </script>
+</body>
+</html>

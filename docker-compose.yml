@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: smart-place-finder-db
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: adminpass
+      MYSQL_DATABASE: db_users # Creates db_users first; other DBs created via init.sql
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./db-init:/docker-entrypoint-initdb.d
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "admin", "-padminpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - smart-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smart-place-finder-backend
+    restart: always
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - PORT=4000
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=admin
+      - DB_PASSWORD=adminpass
+      - DB_NAME_USERS=db_users
+      - DB_NAME_CAFES=db_cafes
+      - DB_NAME_REVIEWS=db_reviews
+      - DB_NAME_FOLDERS=db_folders
+      - DB_NAME_NOTES=db_notes
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - smart-network
+
+volumes:
+  mysql_data:
+
+networks:
+  smart-network:
+    driver: bridge
