@@ -1,6 +1,9 @@
 version: '3.8'
 
 services:
+  # ─────────────────────────────────────────────────────────────────
+  # DATABASE — Single MySQL instance with 5 isolated domain databases
+  # ─────────────────────────────────────────────────────────────────
   db:
     image: mysql:8.0
     container_name: smart-place-finder-db
@@ -10,7 +13,7 @@ services:
       MYSQL_ROOT_PASSWORD: rootpass
       MYSQL_USER: admin
       MYSQL_PASSWORD: adminpass
-      MYSQL_DATABASE: db_users # Creates db_users first; other DBs created via init.sql
+      MYSQL_DATABASE: db_users
     ports:
       - "3307:3306"
     volumes:
@@ -20,36 +23,165 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "admin", "-padminpass"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 15
     networks:
       - smart-network
 
-  backend:
+  # ─────────────────────────────────────────────────────────────────
+  # USER SERVICE — Auth, registration, and user profiles (port 3001)
+  # ─────────────────────────────────────────────────────────────────
+  user-service:
     build:
-      context: ./backend
+      context: ./services/user-service
       dockerfile: Dockerfile
-    container_name: smart-place-finder-backend
+    container_name: smart-place-finder-user-svc
     restart: always
-    ports:
-      - "4000:4000"
     volumes:
-      - ./backend:/usr/src/app
+      - ./services/user-service:/usr/src/app
       - /usr/src/app/node_modules
     environment:
-      - PORT=4000
-      - NODE_ENV=development
+      - PORT=3001
       - DB_HOST=db
       - DB_PORT=3306
       - DB_USER=admin
       - DB_PASSWORD=adminpass
-      - DB_NAME_USERS=db_users
-      - DB_NAME_CAFES=db_cafes
-      - DB_NAME_REVIEWS=db_reviews
-      - DB_NAME_FOLDERS=db_folders
-      - DB_NAME_NOTES=db_notes
+      - DB_NAME=db_users
+      - JWT_SECRET=spf_super_secret_key_change_in_production
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - smart-network
+
+  # ─────────────────────────────────────────────────────────────────
+  # CAFE SERVICE — Cafe CRUD and admin moderation (port 3002)
+  # ─────────────────────────────────────────────────────────────────
+  cafe-service:
+    build:
+      context: ./services/cafe-service
+      dockerfile: Dockerfile
+    container_name: smart-place-finder-cafe-svc
+    restart: always
+    volumes:
+      - ./services/cafe-service:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - PORT=3002
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=admin
+      - DB_PASSWORD=adminpass
+      - DB_NAME=db_cafes
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - smart-network
+
+  # ─────────────────────────────────────────────────────────────────
+  # REVIEW SERVICE — Reviews and dynamic rating calculation (port 3003)
+  # ─────────────────────────────────────────────────────────────────
+  review-service:
+    build:
+      context: ./services/review-service
+      dockerfile: Dockerfile
+    container_name: smart-place-finder-review-svc
+    restart: always
+    volumes:
+      - ./services/review-service:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - PORT=3003
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=admin
+      - DB_PASSWORD=adminpass
+      - DB_NAME=db_reviews
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - smart-network
+
+  # ─────────────────────────────────────────────────────────────────
+  # FOLDER SERVICE — User favorite folders and cafe mappings (port 3004)
+  # ─────────────────────────────────────────────────────────────────
+  folder-service:
+    build:
+      context: ./services/folder-service
+      dockerfile: Dockerfile
+    container_name: smart-place-finder-folder-svc
+    restart: always
+    volumes:
+      - ./services/folder-service:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - PORT=3004
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=admin
+      - DB_PASSWORD=adminpass
+      - DB_NAME=db_folders
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - smart-network
+
+  # ─────────────────────────────────────────────────────────────────
+  # NOTE SERVICE — Isolated personal notes per user per cafe (port 3005)
+  # ─────────────────────────────────────────────────────────────────
+  note-service:
+    build:
+      context: ./services/note-service
+      dockerfile: Dockerfile
+    container_name: smart-place-finder-note-svc
+    restart: always
+    volumes:
+      - ./services/note-service:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - PORT=3005
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=admin
+      - DB_PASSWORD=adminpass
+      - DB_NAME=db_notes
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - smart-network
+
+  # ─────────────────────────────────────────────────────────────────
+  # API GATEWAY — GraphQL aggregation + serves SPA frontend (port 4000)
+  # Only this service is exposed to the outside world
+  # ─────────────────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: smart-place-finder-gateway
+    restart: always
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./services/api-gateway:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - PORT=4000
+      - JWT_SECRET=spf_super_secret_key_change_in_production
+      - USER_SERVICE_URL=http://user-service:3001
+      - CAFE_SERVICE_URL=http://cafe-service:3002
+      - REVIEW_SERVICE_URL=http://review-service:3003
+      - FOLDER_SERVICE_URL=http://folder-service:3004
+      - NOTE_SERVICE_URL=http://note-service:3005
+    depends_on:
+      - user-service
+      - cafe-service
+      - review-service
+      - folder-service
+      - note-service
     networks:
       - smart-network
 

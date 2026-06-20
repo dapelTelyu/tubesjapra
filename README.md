@@ -1,306 +1,175 @@
-# Smart Place Finder ☕📍
+# Smart Place Finder ☕📍 — Microservices Edition
 
-**Smart Place Finder** adalah aplikasi berbasis web yang dirancang secara modern untuk mencatat, mengelola, dan mereview cafe yang pernah dikunjungi, serta membagikan ulasan tersebut ke publik setelah melewati tahap persetujuan admin (moderasi). 
-
-Proyek ini dibangun menggunakan arsitektur **API Gateway (GraphQL)** dan infrastruktur **Docker Containerization** untuk memisahkan domain data ke dalam beberapa basis data terisolasi guna mensimulasikan lingkungan microservices yang mandiri dan berintegritas tinggi.
+**Smart Place Finder** adalah aplikasi berbasis web untuk mencatat, mengelola, dan mereview cafe, dibangun dengan **arsitektur Microservices penuh** menggunakan Docker, REST API inter-service, dan GraphQL API Gateway.
 
 ---
 
-## 🛠️ Arsitektur & Teknologi Sistem
+## 🏗️ Arsitektur Microservices
 
-Aplikasi ini mengadopsi standar pengembangan modular end-to-end:
+```
+Browser ──► API Gateway :4000 (GraphQL + SPA)
+                │
+       ┌────────┼──────────────────────────┐
+       ▼        ▼         ▼        ▼        ▼
+user-svc   cafe-svc  review-svc folder-svc note-svc
+:3001      :3002      :3003      :3004      :3005
+   │          │          │          │          │
+db_users  db_cafes  db_reviews db_folders  db_notes
+```
 
-*   **Backend:** Node.js, Express.js.
-*   **API Gateway:** GraphQL (menggunakan `@apollo/server` dan middleware Express).
-*   **Database (Strict Isolation):** MySQL 8.0 (berjalan di dalam container terpisah dengan 5 database independen):
-    *   `db_users` (untuk profil pengguna)
-    *   `db_cafes` (untuk data cafe utama dan status publikasi)
-    *   `db_reviews` (untuk rating dan review pengguna)
-    *   `db_folders` (untuk folder favorit pengguna)
-    *   `db_notes` (untuk catatan pribadi pengguna yang terisolasi)
-*   **Frontend Client:** Single Page Application (SPA) menggunakan HTML5 Semantik, Vanilla JavaScript (Fetch API), dan **Tailwind CSS via CDN** dengan tipografi **Plus Jakarta Sans / Outfit**.
-*   **Infrastruktur:** Docker & Docker Compose untuk orkestrasi container dan volume persisten.
+### Karakteristik Microservices Nyata
+- ✅ **Setiap service = proses Node.js terpisah** + container Docker sendiri
+- ✅ **Setiap service hanya akses database domainnya sendiri** (tidak ada cross-DB query)
+- ✅ **Komunikasi antar-service via HTTP REST** (service-to-service calls)
+- ✅ **API Gateway** sebagai single entry point — mengagregasi & mengorkestrasikan semua service
+- ✅ **Independent codebase** — setiap service punya `package.json`, `Dockerfile`, dan `.env` sendiri
+- ✅ **Independent deployment** — setiap service bisa di-rebuild tanpa mempengaruhi yang lain
 
 ---
 
-## 📂 Struktur Folder Proyek
+## 🛠️ Teknologi Stack
+
+| Layer | Teknologi |
+|---|---|
+| **API Gateway** | Node.js, Express.js, Apollo Server (GraphQL) |
+| **Domain Services** | Node.js, Express.js (REST API) |
+| **Databases** | MySQL 8.0 (5 database domain terpisah) |
+| **Container** | Docker & Docker Compose |
+| **Frontend** | HTML5, Vanilla JS, Tailwind CSS via CDN |
+| **Auth** | JSON Web Token (JWT) — diproses oleh user-service |
+
+---
+
+## 📂 Struktur Proyek
 
 ```
 Smart-Place-Finder/
-├── backend/
-│   ├── public/
-│   │   └── index.html        # Frontend Client SPA (Tailwind CSS & Vanilla JS)
-│   ├── src/
-│   │   ├── config/
-│   │   │   └── db.js            # Inisialisasi pool koneksi MySQL (5 database)
-│   │   ├── schema/
-│   │   │   ├── typeDefs/        # Modular GraphQL Type Definitions (schema)
-│   │   │   │   ├── base.js
-│   │   │   │   ├── user.js
-│   │   │   │   ├── cafe.js
-│   │   │   │   ├── review.js
-│   │   │   │   ├── folder.js
-│   │   │   │   ├── note.js
-│   │   │   │   └── index.js
-│   │   │   └── resolvers/       # Modular GraphQL Business Logic (resolvers)
-│   │   │       ├── user.js
-│   │   │       ├── cafe.js
-│   │   │       ├── review.js
-│   │   │       ├── folder.js
-│   │   │       ├── note.js
-│   │   │       └── index.js
-│   │   └── index.js             # Entrypoint server Express & Apollo Server
-│   ├── .dockerignore            # Exclude node_modules dan file lokal
-│   ├── .env                     # Variabel lingkungan aktif untuk database
-│   ├── .env.example             # Template variabel lingkungan
-│   └── Dockerfile               # Konfigurasi container image backend Node.js
+├── services/
+│   ├── api-gateway/          # GraphQL API Gateway (port 4000) — PUBLIC
+│   │   ├── public/
+│   │   │   └── index.html    # Frontend SPA
+│   │   ├── src/
+│   │   │   ├── schema/
+│   │   │   │   ├── typeDefs/ # GraphQL type definitions
+│   │   │   │   └── resolvers/# Resolvers yang memanggil services via HTTP
+│   │   │   └── index.js      # Apollo Server + Express entrypoint
+│   │   ├── .env
+│   │   └── Dockerfile
+│   │
+│   ├── user-service/         # User domain REST API (port 3001) — INTERNAL
+│   ├── cafe-service/         # Cafe domain REST API (port 3002) — INTERNAL
+│   ├── review-service/       # Review domain REST API (port 3003) — INTERNAL
+│   ├── folder-service/       # Folder domain REST API (port 3004) — INTERNAL
+│   └── note-service/         # Note domain REST API (port 3005) — INTERNAL
+│
 ├── db-init/
-│   └── init.sql                 # Script inisialisasi skema DDL & Seed data MySQL
-├── docker-compose.yml           # Orkestrasi Docker container (backend & db)
-├── .gitignore                   # Aturan pengabaian file Git
-├── DESIGN.md                    # Panduan desain & UI/UX tokens
-├── PRD.md                       # Product Requirements Document
-└── README.md                    # Dokumentasi teknis proyek (berkas ini)
+│   └── init.sql              # Inisialisasi DDL + seed data MySQL
+├── docker-compose.yml        # Orkestrasi 7 containers (1 db + 6 services)
+└── README.md
 ```
 
 ---
 
-## 💾 Desain ERD & Skema Database
+## 🔌 Service REST API Endpoints
 
-Untuk mendukung isolasi data, MySQL diinisialisasi secara otomatis oleh script `init.sql` dengan membagi tabel-tabel ke dalam database masing-masing:
+### user-service (3001)
+| Method | Path | Fungsi |
+|---|---|---|
+| `POST` | `/users/signup` | Registrasi user baru |
+| `POST` | `/users/login` | Login + JWT |
+| `GET` | `/users/:id` | Profil user |
+| `PUT` | `/users/:id` | Update profil |
 
-```mermaid
-erDiagram
-    subgraph db_users
-        users {
-            int id PK
-            varchar name
-            text bio
-            varchar profile_pic
-            timestamp created_at
-        }
-    end
+### cafe-service (3002)
+| Method | Path | Fungsi |
+|---|---|---|
+| `GET` | `/cafes` | List cafe APPROVED |
+| `GET` | `/cafes/pending` | Antrean moderasi admin |
+| `GET` | `/cafes/batch?ids=1,2` | Batch fetch (untuk folder) |
+| `GET` | `/cafes/:id` | Detail cafe |
+| `POST` | `/cafes` | Buat cafe baru (PENDING) |
+| `PUT` | `/cafes/:id` | Update cafe |
+| `PATCH` | `/cafes/:id/status` | Update publish status |
+| `PATCH` | `/cafes/:id/rating` | Update avg rating (dari gateway) |
+| `DELETE` | `/cafes/:id` | Hapus cafe |
 
-    subgraph db_cafes
-        cafes {
-            int id PK
-            varchar name
-            text description
-            varchar address
-            varchar photo
-            decimal rating
-            enum publish_status
-            timestamp created_at
-        }
-    end
+### review-service (3003)
+| Method | Path | Fungsi |
+|---|---|---|
+| `GET` | `/reviews?cafeId=:id` | List reviews per cafe |
+| `POST` | `/reviews` | Tambah review → `{ review, avgRating }` |
+| `PUT` | `/reviews/:id` | Update review → `{ review, avgRating }` |
+| `DELETE` | `/reviews?cafeId=:id` | Hapus reviews (cascade) |
 
-    subgraph db_reviews
-        reviews {
-            int id PK
-            int cafe_id
-            int user_id
-            int rating
-            text review_text
-            timestamp created_at
-        }
-    end
+### folder-service (3004)
+| Method | Path | Fungsi |
+|---|---|---|
+| `GET` | `/folders?userId=:id` | List folder user |
+| `POST` | `/folders` | Buat folder |
+| `GET` | `/folders/:id/cafes` | List cafe IDs di folder |
+| `POST` | `/folders/:id/cafes` | Tambah cafe ke folder |
+| `DELETE` | `/folders/cafe-mappings?cafeId=:id` | Hapus mappings (cascade) |
 
-    subgraph db_folders
-        folders {
-            int id PK
-            int user_id
-            varchar name
-            timestamp created_at
-        }
-        folder_cafes {
-            int folder_id PK
-            int cafe_id PK
-        }
-    end
-
-    subgraph db_notes
-        personal_notes {
-            int id PK
-            int user_id
-            int cafe_id
-            text note_text
-            timestamp created_at
-        }
-    end
-    
-    users ||--o{ reviews : "writes"
-    cafes ||--o{ reviews : "has"
-    users ||--o{ folders : "owns"
-    folders ||--o{ folder_cafes : "contains"
-    users ||--o{ personal_notes : "writes"
-```
-
-*Hubungan relasional antara entitas di atas dijaga dan diresolusi secara dinamis di tingkat API Gateway (GraphQL resolvers).*
+### note-service (3005)
+| Method | Path | Fungsi |
+|---|---|---|
+| `GET` | `/notes?userId=:id&cafeId=:id` | Get catatan |
+| `POST` | `/notes` | Buat catatan |
+| `PUT` | `/notes/:id` | Update catatan |
+| `DELETE` | `/notes?cafeId=:id` | Hapus catatan (cascade) |
 
 ---
 
-## ⚡ Prasyarat & Cara Instalasi
+## ⚡ Cara Menjalankan
 
-Ikuti langkah-langkah di bawah untuk menjalankan aplikasi secara instan:
+### Prasyarat
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (pastikan sedang berjalan)
+- Port `4000` (gateway) dan `3307` (database) kosong
 
-### 1. Prasyarat
-Pastikan Anda telah memasang perangkat lunak berikut:
-*   [Docker Desktop](https://www.docker.com/products/docker-desktop/) (pastikan daemon Docker dalam keadaan berjalan).
-*   Port host `4000` (backend) dan `3307` (database) dalam keadaan kosong/tidak terpakai.
+### Build & Run
+```powershell
+# Di root folder proyek
+docker-compose up --build -d
+```
 
-### 2. Menjalankan Aplikasi
-1.  Buka terminal atau PowerShell pada root folder proyek (`Smart-Place-Finder`).
-2.  Jalankan perintah berikut untuk mengunduh image, membangun container, dan menjalankan service:
-    ```powershell
-    docker-compose up --build -d
-    ```
-3.  Tunggu hingga container database MySQL melakukan inisiasi tabel dan seeding data secara otomatis. Anda dapat memantau status kesehatan container dengan perintah `docker-compose ps`.
-4.  Setelah status database menjadi **healthy**, akses aplikasi melalui browser:
-    *   **Dashboard SPA Client:** `http://localhost:4000/`
-    *   **GraphQL Playground:** `http://localhost:4000/graphql`
-    *   **REST Health Check:** `http://localhost:4000/health`
+### URL Akses
+| Endpoint | URL |
+|---|---|
+| **Frontend SPA** | http://localhost:4000/ |
+| **GraphQL Playground** | http://localhost:4000/graphql |
+| **Gateway Health** | http://localhost:4000/health |
+| **All Services Health** | http://localhost:4000/health/all |
 
-### 3. Menghentikan Aplikasi
-Untuk menghentikan container beserta seluruh volumenya, jalankan:
+### Stop
 ```powershell
 docker-compose down -v
 ```
 
 ---
 
-## 🔍 Panduan Pengujian & Payload API
+## 🔍 Demo Accounts
 
-Berikut adalah beberapa payload kueri dan mutasi GraphQL yang dapat dieksekusi di **GraphQL Playground** (`http://localhost:4000/graphql`) atau Postman untuk memvalidasi fungsionalitas sistem:
+| Email | Password | Role |
+|---|---|---|
+| `alice@spf.com` | `password123` | User |
+| `admin@spf.com` | `admin123` | Admin |
 
-### 1. Manajemen Cafe & Admin Review System
+---
 
-*   **Mutation `createCafe` (Registrasi cafe baru - status otomatis PENDING):**
-    ```graphql
-    mutation {
-      createCafe(
-        name: "Morning Glory Coffee"
-        description: "Tempat tenang dengan hembusan angin sejuk"
-        address: "Jl. Diponegoro No. 12, Bandung"
-        photo: "https://images.unsplash.com/photo-1498804103079-a6351b050096?w=500"
-        rating: 4.5
-        review: "Kopinya enak sekali, layanannya cepat!"
-      ) {
-        id
-        name
-        publishStatus
-        rating
-      }
-    }
-    ```
+## 🔄 Alur Komunikasi (Cross-Service Orchestration)
 
-*   **Query `getPendingCafes` (Mendapatkan antrean moderasi admin):**
-    ```graphql
-    query {
-      getPendingCafes {
-        id
-        name
-        publishStatus
-      }
-    }
-    ```
+Contoh `addReview` mutation:
+```
+Browser → Gateway /graphql (addReview)
+   ├─► POST review-service:3003 /reviews  → { review, avgRating: 4.5 }
+   └─► PATCH cafe-service:3002 /cafes/:id/rating  { rating: 4.5 }
+```
 
-*   **Mutation `updateCafePublishStatus` (Menyetujui cafe oleh admin):**
-    ```graphql
-    mutation {
-      updateCafePublishStatus(id: "4", publishStatus: APPROVED) {
-        id
-        name
-        publishStatus
-      }
-    }
-    ```
-
-*   **Query `getCafes` (Mendapatkan seluruh cafe berstatus APPROVED beserta ulasannya):**
-    ```graphql
-    query {
-      getCafes {
-        id
-        name
-        rating
-        publishStatus
-        reviews {
-          id
-          rating
-          reviewText
-          user {
-            name
-          }
-        }
-      }
-    }
-    ```
-
-### 2. Rating & Review (Kalkulasi Rating Dinamis)
-
-*   **Mutation `addReview` (Menambahkan review baru dan menghitung ulang rata-rata rating cafe):**
-    ```graphql
-    mutation {
-      addReview(
-        cafeId: "2"
-        userId: "1"
-        rating: 5
-        reviewText: "Tempat WFH terbaik, WiFi-nya kencang sekali!"
-      ) {
-        id
-        rating
-        reviewText
-        cafe {
-          id
-          name
-          rating
-        }
-      }
-    }
-    ```
-
-### 3. Folder Favorit (Penyimpanan Mappings)
-
-*   **Query `getUserFolders` (Mendapatkan folder favorit user dan cafe di dalamnya):**
-    ```graphql
-    query {
-      getUserFolders(userId: "1") {
-        id
-        name
-        cafes {
-          id
-          name
-          address
-        }
-      }
-    }
-    ```
-
-### 4. Personal Notes (Catatan Pribadi yang Terisolasi)
-
-*   **Mutation `addPersonalNote` (Menambahkan catatan privat):**
-    ```graphql
-    mutation {
-      addPersonalNote(
-        userId: "1"
-        cafeId: "2"
-        noteText: "WiFi pass: kopi_kenangan123. Meja dekat colokan ada di lantai 2."
-      ) {
-        id
-        noteText
-      }
-    }
-    ```
-
-*   **Query `getCafeById` (Mengambil detail cafe dan catatan pribadi terisolasi per user):**
-    ```graphql
-    query {
-      getCafeById(id: "2") {
-        id
-        name
-        personalNotes(userId: "1") {
-          id
-          noteText
-        }
-      }
-    }
-    ```
+Contoh `deleteCafe` mutation (cascade):
+```
+Browser → Gateway /graphql (deleteCafe)
+   ├─► DELETE review-service:3003 /reviews?cafeId=X
+   ├─► DELETE note-service:3005 /notes?cafeId=X
+   ├─► DELETE folder-service:3004 /folders/cafe-mappings?cafeId=X
+   └─► DELETE cafe-service:3002 /cafes/X
+```
